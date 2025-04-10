@@ -89,16 +89,18 @@ export default function NftCard({ nft, showBidButton = false }: NftCardProps) {
               <div>
                 <h3 className="font-poppins font-semibold text-lg truncate">{nft.name}</h3>
                 <div className="flex items-center mt-1 mb-2">
-                  <Avatar className="w-6 h-6 mr-2">
-                    <AvatarImage 
-                      src={creator?.profileImage || getRandomAvatarUrl(nft.creatorId)} 
-                      alt={creator?.displayName || "Creator"} 
-                    />
-                    <AvatarFallback>
-                      {(creator?.displayName?.[0] || "C").toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                  <span className="text-sm text-gray-600 dark:text-gray-400">
+                  <div className="flex-shrink-0">
+                    <Avatar className="w-6 h-6 mr-2">
+                      <AvatarImage 
+                        src={creator?.profileImage || getRandomAvatarUrl(nft.creatorId)} 
+                        alt={creator?.displayName || "Creator"} 
+                      />
+                      <AvatarFallback>
+                        {(creator?.displayName?.[0] || "C").toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                  </div>
+                  <span className="text-sm text-gray-600 dark:text-gray-400 truncate">
                     @{creator?.username || "creator"}
                   </span>
                 </div>

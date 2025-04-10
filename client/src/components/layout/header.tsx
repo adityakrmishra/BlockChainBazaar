@@ -61,24 +61,24 @@ export default function Header() {
         {/* Navigation - Desktop */}
         <nav className="hidden md:flex items-center space-x-5">
           <Link href="/">
-            <a className={`font-medium hover:text-secondary transition-colors ${location === '/' ? 'text-secondary' : ''}`}>
+            <span className={`font-medium hover:text-secondary transition-colors cursor-pointer ${location === '/' ? 'text-secondary' : ''}`}>
               Home
-            </a>
+            </span>
           </Link>
           <Link href="/marketplace">
-            <a className={`font-medium hover:text-secondary transition-colors ${location === '/marketplace' ? 'text-secondary' : ''}`}>
+            <span className={`font-medium hover:text-secondary transition-colors cursor-pointer ${location === '/marketplace' ? 'text-secondary' : ''}`}>
               Explore
-            </a>
+            </span>
           </Link>
           <Link href="/create">
-            <a className={`font-medium hover:text-secondary transition-colors ${location === '/create' ? 'text-secondary' : ''}`}>
+            <span className={`font-medium hover:text-secondary transition-colors cursor-pointer ${location === '/create' ? 'text-secondary' : ''}`}>
               Create
-            </a>
+            </span>
           </Link>
           <Link href="/developer">
-            <a className={`font-medium hover:text-secondary transition-colors ${location === '/developer' ? 'text-secondary' : ''}`}>
+            <span className={`font-medium hover:text-secondary transition-colors cursor-pointer ${location === '/developer' ? 'text-secondary' : ''}`}>
               Developer
-            </a>
+            </span>
           </Link>
         </nav>
         
@@ -158,32 +158,32 @@ export default function Header() {
           
           <nav className="flex flex-col space-y-4">
             <Link href="/">
-              <a className={`font-medium hover:text-secondary transition-colors ${location === '/' ? 'text-secondary' : ''}`} onClick={toggleMenu}>
+              <span className={`font-medium hover:text-secondary transition-colors cursor-pointer ${location === '/' ? 'text-secondary' : ''}`} onClick={toggleMenu}>
                 Home
-              </a>
+              </span>
             </Link>
             <Link href="/marketplace">
-              <a className={`font-medium hover:text-secondary transition-colors ${location === '/marketplace' ? 'text-secondary' : ''}`} onClick={toggleMenu}>
+              <span className={`font-medium hover:text-secondary transition-colors cursor-pointer ${location === '/marketplace' ? 'text-secondary' : ''}`} onClick={toggleMenu}>
                 Explore
-              </a>
+              </span>
             </Link>
             <Link href="/create">
-              <a className={`font-medium hover:text-secondary transition-colors ${location === '/create' ? 'text-secondary' : ''}`} onClick={toggleMenu}>
+              <span className={`font-medium hover:text-secondary transition-colors cursor-pointer ${location === '/create' ? 'text-secondary' : ''}`} onClick={toggleMenu}>
                 Create
-              </a>
+              </span>
             </Link>
             <Link href="/developer">
-              <a className={`font-medium hover:text-secondary transition-colors ${location === '/developer' ? 'text-secondary' : ''}`} onClick={toggleMenu}>
+              <span className={`font-medium hover:text-secondary transition-colors cursor-pointer ${location === '/developer' ? 'text-secondary' : ''}`} onClick={toggleMenu}>
                 Developer
-              </a>
+              </span>
             </Link>
             
             {user ? (
               <>
                 <Link href={`/profile/${user.id}`}>
-                  <a className="font-medium hover:text-secondary transition-colors" onClick={toggleMenu}>
+                  <span className="font-medium hover:text-secondary transition-colors cursor-pointer" onClick={toggleMenu}>
                     Profile
-                  </a>
+                  </span>
                 </Link>
                 <button 
                   className="font-medium text-left text-destructive hover:text-red-700 transition-colors" 
@@ -197,9 +197,9 @@ export default function Header() {
               </>
             ) : (
               <Link href="/auth">
-                <a className="font-medium text-secondary hover:underline" onClick={toggleMenu}>
+                <span className="font-medium text-secondary hover:underline cursor-pointer" onClick={toggleMenu}>
                   Connect Wallet
-                </a>
+                </span>
               </Link>
             )}
           </nav>
