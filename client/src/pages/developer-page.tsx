@@ -1,5 +1,21 @@
-import { Github, Linkedin, Mail, Globe, Video, Code, Database } from "lucide-react";
+import { Github, Linkedin, Mail, Globe, Video, Code, Database, Instagram } from "lucide-react";
 import adityaImage from "@assets/Aditya.jpg";
+
+// Custom Unstop icon
+const UnstopIcon = () => (
+  <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M12 2L2 12l10 10 10-10-10-10z"></path>
+    <path d="M12 16a4 4 0 100-8 4 4 0 000 8z"></path>
+  </svg>
+);
+
+// Custom LeetCode icon
+const LeetCodeIcon = () => (
+  <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+    <path d="M15 5l3 3"></path>
+  </svg>
+);
 
 export default function DeveloperPage() {
   return (
@@ -16,38 +32,69 @@ export default function DeveloperPage() {
               />
               <div className="p-5 bg-white dark:bg-gray-900">
                 <h2 className="text-2xl font-bold">Aditya Kr Mishra</h2>
-                <p className="text-gray-500 dark:text-gray-400 mt-1">Full Stack Developer</p>
+                <p className="text-gray-500 dark:text-gray-400 mt-1">School Student</p>
                 
-                <div className="mt-4 flex space-x-3">
+                <div className="mt-4 flex flex-wrap gap-3">
                   <a 
                     href="https://github.com/adityakrmishra" 
                     target="_blank" 
                     rel="noopener noreferrer"
                     className="p-2 bg-gray-100 dark:bg-gray-800 rounded-full hover:bg-secondary hover:text-white transition-colors"
+                    title="GitHub"
                   >
                     <Github className="w-5 h-5" />
                   </a>
                   <a 
-                    href="https://linkedin.com/in/adityakrmishra" 
+                    href="https://www.linkedin.com/in/aditya-kumarmishra" 
                     target="_blank" 
                     rel="noopener noreferrer"
                     className="p-2 bg-gray-100 dark:bg-gray-800 rounded-full hover:bg-secondary hover:text-white transition-colors"
+                    title="LinkedIn"
                   >
                     <Linkedin className="w-5 h-5" />
                   </a>
                   <a 
-                    href="mailto:adityakrmishra@gmail.com" 
+                    href="mailto:cjrcoder@gmail.com" 
                     className="p-2 bg-gray-100 dark:bg-gray-800 rounded-full hover:bg-secondary hover:text-white transition-colors"
+                    title="Email"
                   >
                     <Mail className="w-5 h-5" />
                   </a>
                   <a 
-                    href="https://adityakrmishra.com" 
+                    href="https://adityakrmishra.github.io/protfolio/" 
                     target="_blank" 
                     rel="noopener noreferrer"
                     className="p-2 bg-gray-100 dark:bg-gray-800 rounded-full hover:bg-secondary hover:text-white transition-colors"
+                    title="Portfolio"
                   >
                     <Globe className="w-5 h-5" />
+                  </a>
+                  <a 
+                    href="https://www.instagram.com/aditya_kr._mishra" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="p-2 bg-gray-100 dark:bg-gray-800 rounded-full hover:bg-secondary hover:text-white transition-colors"
+                    title="Instagram"
+                  >
+                    <Instagram className="w-5 h-5" />
+                  </a>
+                  <a 
+                    href="https://unstop.com/u/aditymis95035" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="p-2 bg-gray-100 dark:bg-gray-800 rounded-full hover:bg-secondary hover:text-white transition-colors"
+                    title="Unstop"
+                  >
+                    <UnstopIcon />
+                  </a>
+                  <a 
+                    href="https://leetcode.com/u/adityakr_mishra/" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="p-2 bg-gray-100 dark:bg-gray-800 rounded-full hover:bg-secondary hover:text-white transition-colors"
+                    title="LeetCode"
+                  >
+                    <LeetCodeIcon />
                   </a>
                 </div>
               </div>
