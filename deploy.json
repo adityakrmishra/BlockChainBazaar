@@ -1,0 +1,6 @@
+{
+  "run": "npm run dev",
+  "env": {
+    "NODE_ENV": "production"
+  }
+}
