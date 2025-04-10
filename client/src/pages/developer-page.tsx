@@ -92,10 +92,16 @@ export default function DeveloperPage() {
             </div>
             
             {/* Download resume button */}
-            <Button className="bg-gradient-to-r from-blue-500 to-cyan-400 hover:from-blue-600 hover:to-cyan-500 text-white rounded-full px-6 py-2 flex items-center gap-2 transition-all duration-300 transform hover:scale-105 mb-8">
-              <Download className="w-4 h-4" />
-              Download Resume
-            </Button>
+            <a 
+              href="https://drive.google.com/file/d/1wg5lbPvc6jndVeLk9e1OJ4CLa0RPTjRP/view?usp=sharing" 
+              target="_blank" 
+              rel="noopener noreferrer"
+            >
+              <Button className="bg-gradient-to-r from-blue-500 to-cyan-400 hover:from-blue-600 hover:to-cyan-500 text-white rounded-full px-6 py-2 flex items-center gap-2 transition-all duration-300 transform hover:scale-105 mb-8">
+                <Download className="w-4 h-4" />
+                Download Resume
+              </Button>
+            </a>
             
             {/* Social media icons */}
             <div className="flex flex-wrap justify-center gap-4 mb-8">
