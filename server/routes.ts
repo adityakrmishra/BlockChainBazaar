@@ -2,12 +2,31 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth } from "./auth";
+import { seedDatabase } from "./seed";
 import { z } from "zod";
 import { insertNftSchema, insertCollectionSchema, insertAuctionSchema, insertBidSchema, insertTransactionSchema, insertFollowSchema, insertCommentSchema } from "@shared/schema";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Setup authentication routes
   setupAuth(app);
+  
+  // Seed database with initial data
+  await seedDatabase();
+  
+  // Users routes
+  app.get("/api/users", async (req, res) => {
+    try {
+      const users = await storage.getAllUsers();
+      // Remove passwords from the response
+      const usersWithoutPasswords = users.map(user => {
+        const { password, ...userWithoutPassword } = user;
+        return userWithoutPassword;
+      });
+      res.json(usersWithoutPasswords);
+    } catch (error) {
+      res.status(500).json({ message: "Error fetching users" });
+    }
+  });
 
   // NFT routes
   app.get("/api/nfts", async (req, res) => {

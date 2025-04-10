@@ -8,6 +8,7 @@ export interface IStorage {
   // User operations
   getUser(id: number): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
+  getAllUsers(): Promise<User[]>;
   createUser(user: InsertUser): Promise<User>;
   updateUser(id: number, user: Partial<InsertUser>): Promise<User | undefined>;
 
@@ -113,6 +114,10 @@ export class MemStorage implements IStorage {
     return Array.from(this.users.values()).find(
       (user) => user.username.toLowerCase() === username.toLowerCase()
     );
+  }
+
+  async getAllUsers(): Promise<User[]> {
+    return Array.from(this.users.values());
   }
 
   async createUser(userData: InsertUser): Promise<User> {
