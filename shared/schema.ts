@@ -1,138 +1,76 @@
-import { pgTable, text, serial, integer, boolean, timestamp, doublePrecision } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, timestamp, json, doublePrecision } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
-// Users table
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   username: text("username").notNull().unique(),
   password: text("password").notNull(),
-  email: text("email").notNull().unique(),
-  avatarUrl: text("avatar_url"),
+  displayName: text("display_name").notNull(),
   bio: text("bio"),
-  walletAddress: text("wallet_address"),
+  profileImage: text("profile_image"),
+  coverImage: text("cover_image"),
+  isCreator: boolean("is_creator").default(false).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
-export const insertUserSchema = createInsertSchema(users).pick({
-  username: true,
-  password: true,
-  email: true,
-  avatarUrl: true,
-  bio: true,
-  walletAddress: true,
-});
-
-// Collections table
-export const collections = pgTable("collections", {
-  id: serial("id").primaryKey(),
-  name: text("name").notNull(),
-  description: text("description"),
-  bannerUrl: text("banner_url"),
-  creatorId: integer("creator_id").notNull().references(() => users.id),
-  floorPrice: doublePrecision("floor_price"),
-  volume: doublePrecision("volume"),
-  itemCount: integer("item_count"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-});
-
-export const insertCollectionSchema = createInsertSchema(collections).pick({
-  name: true,
-  description: true,
-  bannerUrl: true,
-  creatorId: true,
-  floorPrice: true,
-  volume: true,
-  itemCount: true,
-});
-
-// NFTs table
 export const nfts = pgTable("nfts", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
   description: text("description"),
-  imageUrl: text("image_url").notNull(),
-  ownerId: integer("owner_id").notNull().references(() => users.id),
+  image: text("image").notNull(),
   creatorId: integer("creator_id").notNull().references(() => users.id),
-  collectionId: integer("collection_id").references(() => collections.id),
+  ownerId: integer("owner_id").notNull().references(() => users.id),
   price: doublePrecision("price"),
-  currency: text("currency").default("ETH"),
-  isAuction: boolean("is_auction").default(false),
-  auctionEndTime: timestamp("auction_end_time"),
-  mintTxHash: text("mint_tx_hash"),
-  tokenId: text("token_id"),
+  status: text("status").notNull().default("minted"), // minted, listed, sold, auctioning
+  collection: text("collection"),
+  properties: json("properties"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
-export const insertNftSchema = createInsertSchema(nfts).pick({
-  name: true,
-  description: true,
-  imageUrl: true,
-  ownerId: true,
-  creatorId: true,
-  collectionId: true,
-  price: true,
-  currency: true,
-  isAuction: true,
-  auctionEndTime: true,
-  mintTxHash: true,
-  tokenId: true,
+export const collections = pgTable("collections", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  description: text("description"),
+  image: text("image"),
+  creatorId: integer("creator_id").notNull().references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
-// Bids table
-export const bids = pgTable("bids", {
+export const auctions = pgTable("auctions", {
   id: serial("id").primaryKey(),
   nftId: integer("nft_id").notNull().references(() => nfts.id),
-  bidderId: integer("bidder_id").notNull().references(() => users.id),
-  amount: doublePrecision("amount").notNull(),
-  currency: text("currency").default("ETH"),
-  status: text("status").default("active"),
+  startingPrice: doublePrecision("starting_price").notNull(),
+  currentPrice: doublePrecision("current_price").notNull(),
+  endTime: timestamp("end_time").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
-export const insertBidSchema = createInsertSchema(bids).pick({
-  nftId: true,
-  bidderId: true,
-  amount: true,
-  currency: true,
-  status: true,
+export const bids = pgTable("bids", {
+  id: serial("id").primaryKey(),
+  auctionId: integer("auction_id").notNull().references(() => auctions.id),
+  bidderId: integer("bidder_id").notNull().references(() => users.id),
+  amount: doublePrecision("amount").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
-// Transactions table
 export const transactions = pgTable("transactions", {
   id: serial("id").primaryKey(),
   nftId: integer("nft_id").notNull().references(() => nfts.id),
   sellerId: integer("seller_id").notNull().references(() => users.id),
   buyerId: integer("buyer_id").notNull().references(() => users.id),
   price: doublePrecision("price").notNull(),
-  currency: text("currency").default("ETH"),
-  txHash: text("tx_hash"),
+  transactionType: text("transaction_type").notNull(), // direct, auction
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
-export const insertTransactionSchema = createInsertSchema(transactions).pick({
-  nftId: true,
-  sellerId: true,
-  buyerId: true,
-  price: true,
-  currency: true,
-  txHash: true,
-});
-
-// Follows table
 export const follows = pgTable("follows", {
   id: serial("id").primaryKey(),
   followerId: integer("follower_id").notNull().references(() => users.id),
-  followedId: integer("followed_id").notNull().references(() => users.id),
+  followingId: integer("following_id").notNull().references(() => users.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
-export const insertFollowSchema = createInsertSchema(follows).pick({
-  followerId: true,
-  followedId: true,
-});
-
-// Comments table
 export const comments = pgTable("comments", {
   id: serial("id").primaryKey(),
   nftId: integer("nft_id").notNull().references(() => nfts.id),
@@ -141,34 +79,80 @@ export const comments = pgTable("comments", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+// Insert schemas
+export const insertUserSchema = createInsertSchema(users).pick({
+  username: true,
+  password: true,
+  displayName: true,
+  bio: true,
+  profileImage: true,
+  coverImage: true,
+  isCreator: true,
+});
+
+export const insertNftSchema = createInsertSchema(nfts).pick({
+  name: true,
+  description: true,
+  image: true,
+  creatorId: true,
+  ownerId: true,
+  price: true,
+  status: true,
+  collection: true,
+  properties: true,
+});
+
+export const insertCollectionSchema = createInsertSchema(collections).pick({
+  name: true,
+  description: true,
+  image: true,
+  creatorId: true,
+});
+
+export const insertAuctionSchema = createInsertSchema(auctions).pick({
+  nftId: true,
+  startingPrice: true,
+  currentPrice: true,
+  endTime: true,
+});
+
+export const insertBidSchema = createInsertSchema(bids).pick({
+  auctionId: true,
+  bidderId: true,
+  amount: true,
+});
+
+export const insertTransactionSchema = createInsertSchema(transactions).pick({
+  nftId: true,
+  sellerId: true,
+  buyerId: true,
+  price: true,
+  transactionType: true,
+});
+
+export const insertFollowSchema = createInsertSchema(follows).pick({
+  followerId: true,
+  followingId: true,
+});
+
 export const insertCommentSchema = createInsertSchema(comments).pick({
   nftId: true,
   userId: true,
   content: true,
 });
 
-// Likes table
-export const likes = pgTable("likes", {
-  id: serial("id").primaryKey(),
-  nftId: integer("nft_id").notNull().references(() => nfts.id),
-  userId: integer("user_id").notNull().references(() => users.id),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-});
-
-export const insertLikeSchema = createInsertSchema(likes).pick({
-  nftId: true,
-  userId: true,
-});
-
-// Export types
+// Types
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
+
+export type NFT = typeof nfts.$inferSelect;
+export type InsertNFT = z.infer<typeof insertNftSchema>;
 
 export type Collection = typeof collections.$inferSelect;
 export type InsertCollection = z.infer<typeof insertCollectionSchema>;
 
-export type NFT = typeof nfts.$inferSelect;
-export type InsertNFT = z.infer<typeof insertNftSchema>;
+export type Auction = typeof auctions.$inferSelect;
+export type InsertAuction = z.infer<typeof insertAuctionSchema>;
 
 export type Bid = typeof bids.$inferSelect;
 export type InsertBid = z.infer<typeof insertBidSchema>;
@@ -181,6 +165,3 @@ export type InsertFollow = z.infer<typeof insertFollowSchema>;
 
 export type Comment = typeof comments.$inferSelect;
 export type InsertComment = z.infer<typeof insertCommentSchema>;
-
-export type Like = typeof likes.$inferSelect;
-export type InsertLike = z.infer<typeof insertLikeSchema>;

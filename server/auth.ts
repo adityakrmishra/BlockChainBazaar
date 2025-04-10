@@ -5,11 +5,11 @@ import session from "express-session";
 import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
 import { storage } from "./storage";
-import { User } from "@shared/schema";
+import { User as SelectUser } from "@shared/schema";
 
 declare global {
   namespace Express {
-    interface User extends User {}
+    interface User extends SelectUser {}
   }
 }
 
@@ -29,16 +29,13 @@ async function comparePasswords(supplied: string, stored: string) {
 }
 
 export function setupAuth(app: Express) {
-  // Use session store for persisting sessions
   const sessionSettings: session.SessionOptions = {
-    secret: process.env.SESSION_SECRET || "nftverse-secret-key",
+    secret: process.env.SESSION_SECRET || "nft-marketplace-secret",
     resave: false,
     saveUninitialized: false,
     store: storage.sessionStore,
     cookie: {
-      maxAge: 86400000, // 24 hours
-      secure: app.get("env") === "production",
-      sameSite: "lax"
+      maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
     }
   };
 
@@ -47,48 +44,35 @@ export function setupAuth(app: Express) {
   app.use(passport.initialize());
   app.use(passport.session());
 
-  // Use local strategy for user authentication
   passport.use(
     new LocalStrategy(async (username, password, done) => {
-      try {
-        const user = await storage.getUserByUsername(username);
-        if (!user || !(await comparePasswords(password, user.password))) {
-          return done(null, false);
-        } else {
-          return done(null, user);
-        }
-      } catch (err) {
-        return done(err);
+      const user = await storage.getUserByUsername(username);
+      if (!user || !(await comparePasswords(password, user.password))) {
+        return done(null, false);
+      } else {
+        return done(null, user);
       }
     }),
   );
 
-  // User serialization for session
   passport.serializeUser((user, done) => done(null, user.id));
   passport.deserializeUser(async (id: number, done) => {
-    try {
-      const user = await storage.getUser(id);
-      done(null, user);
-    } catch (err) {
-      done(err);
-    }
+    const user = await storage.getUser(id);
+    done(null, user);
   });
 
-  // User registration endpoint
   app.post("/api/register", async (req, res, next) => {
     try {
-      // Check if username or email already exists
-      const existingUsername = await storage.getUserByUsername(req.body.username);
-      if (existingUsername) {
-        return res.status(400).json({ message: "Username already exists" });
+      const existingUser = await storage.getUserByUsername(req.body.username);
+      if (existingUser) {
+        return res.status(400).send("Username already exists");
       }
 
-      const existingEmail = await storage.getUserByEmail(req.body.email);
-      if (existingEmail) {
-        return res.status(400).json({ message: "Email already exists" });
+      // Set default display name to username if not provided
+      if (!req.body.displayName) {
+        req.body.displayName = req.body.username;
       }
 
-      // Create user with hashed password
       const user = await storage.createUser({
         ...req.body,
         password: await hashPassword(req.body.password),
@@ -97,32 +81,21 @@ export function setupAuth(app: Express) {
       // Remove password from response
       const { password, ...userWithoutPassword } = user;
 
-      // Log user in after registration
       req.login(user, (err) => {
         if (err) return next(err);
         res.status(201).json(userWithoutPassword);
       });
-    } catch (err) {
-      next(err);
+    } catch (error) {
+      next(error);
     }
   });
 
-  // User login endpoint
-  app.post("/api/login", (req, res, next) => {
-    passport.authenticate("local", (err, user, info) => {
-      if (err) return next(err);
-      if (!user) return res.status(401).json({ message: "Invalid credentials" });
-      
-      req.login(user, (err) => {
-        if (err) return next(err);
-        // Remove password from response
-        const { password, ...userWithoutPassword } = user;
-        res.status(200).json(userWithoutPassword);
-      });
-    })(req, res, next);
+  app.post("/api/login", passport.authenticate("local"), (req, res) => {
+    // Remove password from response
+    const { password, ...userWithoutPassword } = req.user as SelectUser;
+    res.status(200).json(userWithoutPassword);
   });
 
-  // User logout endpoint
   app.post("/api/logout", (req, res, next) => {
     req.logout((err) => {
       if (err) return next(err);
@@ -130,11 +103,10 @@ export function setupAuth(app: Express) {
     });
   });
 
-  // Current user endpoint
   app.get("/api/user", (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     // Remove password from response
-    const { password, ...userWithoutPassword } = req.user as User;
+    const { password, ...userWithoutPassword } = req.user as SelectUser;
     res.json(userWithoutPassword);
   });
 }

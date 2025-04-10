@@ -3,469 +3,578 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth } from "./auth";
 import { z } from "zod";
-import {
-  insertCollectionSchema,
-  insertNftSchema,
-  insertBidSchema,
-  insertCommentSchema
-} from "@shared/schema";
-
-// Middleware to check if user is authenticated
-const isAuthenticated = (req: any, res: any, next: any) => {
-  if (req.isAuthenticated()) {
-    return next();
-  }
-  res.status(401).json({ message: "You must be logged in" });
-};
+import { insertNftSchema, insertCollectionSchema, insertAuctionSchema, insertBidSchema, insertTransactionSchema, insertFollowSchema, insertCommentSchema } from "@shared/schema";
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Set up authentication routes
+  // Setup authentication routes
   setupAuth(app);
 
-  // ===== Collection Routes =====
-  // Get all collections
+  // NFT routes
+  app.get("/api/nfts", async (req, res) => {
+    try {
+      const nfts = await storage.getAllNfts();
+      res.json(nfts);
+    } catch (error) {
+      res.status(500).json({ message: "Error fetching NFTs" });
+    }
+  });
+
+  app.get("/api/nfts/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid NFT ID" });
+      }
+
+      const nft = await storage.getNft(id);
+      if (!nft) {
+        return res.status(404).json({ message: "NFT not found" });
+      }
+
+      res.json(nft);
+    } catch (error) {
+      res.status(500).json({ message: "Error fetching NFT" });
+    }
+  });
+
+  app.post("/api/nfts", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ message: "Authentication required" });
+    }
+
+    try {
+      const validatedData = insertNftSchema.parse(req.body);
+      const nft = await storage.createNft(validatedData);
+      res.status(201).json(nft);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid NFT data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Error creating NFT" });
+    }
+  });
+
+  app.patch("/api/nfts/:id", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ message: "Authentication required" });
+    }
+
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid NFT ID" });
+      }
+
+      const nft = await storage.getNft(id);
+      if (!nft) {
+        return res.status(404).json({ message: "NFT not found" });
+      }
+
+      // Verify ownership
+      if (nft.ownerId !== req.user!.id) {
+        return res.status(403).json({ message: "You don't have permission to update this NFT" });
+      }
+
+      const validatedData = insertNftSchema.partial().parse(req.body);
+      const updatedNft = await storage.updateNft(id, validatedData);
+      res.json(updatedNft);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid NFT data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Error updating NFT" });
+    }
+  });
+
+  // Collection routes
   app.get("/api/collections", async (req, res) => {
     try {
       const collections = await storage.getAllCollections();
       res.json(collections);
-    } catch (err) {
-      res.status(500).json({ message: "Failed to fetch collections" });
+    } catch (error) {
+      res.status(500).json({ message: "Error fetching collections" });
     }
   });
 
-  // Get collection by ID
   app.get("/api/collections/:id", async (req, res) => {
     try {
-      const collection = await storage.getCollection(parseInt(req.params.id));
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid collection ID" });
+      }
+
+      const collection = await storage.getCollection(id);
       if (!collection) {
         return res.status(404).json({ message: "Collection not found" });
       }
+
       res.json(collection);
-    } catch (err) {
-      res.status(500).json({ message: "Failed to fetch collection" });
+    } catch (error) {
+      res.status(500).json({ message: "Error fetching collection" });
     }
   });
 
-  // Create collection (authenticated)
-  app.post("/api/collections", isAuthenticated, async (req, res) => {
+  app.post("/api/collections", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ message: "Authentication required" });
+    }
+
     try {
-      const user = req.user as Express.User;
-      const validatedData = insertCollectionSchema.parse({
-        ...req.body,
-        creatorId: user.id
-      });
+      const validatedData = insertCollectionSchema.parse(req.body);
       const collection = await storage.createCollection(validatedData);
       res.status(201).json(collection);
-    } catch (err) {
-      if (err instanceof z.ZodError) {
-        return res.status(400).json({ errors: err.errors });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid collection data", errors: error.errors });
       }
-      res.status(500).json({ message: "Failed to create collection" });
+      res.status(500).json({ message: "Error creating collection" });
     }
   });
 
-  // Get collections by creator
-  app.get("/api/users/:id/collections", async (req, res) => {
+  // Auction routes
+  app.get("/api/auctions", async (req, res) => {
     try {
-      const collections = await storage.getCollectionsByCreator(parseInt(req.params.id));
-      res.json(collections);
-    } catch (err) {
-      res.status(500).json({ message: "Failed to fetch collections" });
+      const auctions = await storage.getAllAuctions();
+      res.json(auctions);
+    } catch (error) {
+      res.status(500).json({ message: "Error fetching auctions" });
     }
   });
 
-  // ===== NFT Routes =====
-  // Get all NFTs with pagination
-  app.get("/api/nfts", async (req, res) => {
+  app.get("/api/auctions/:id", async (req, res) => {
     try {
-      const limit = req.query.limit ? parseInt(req.query.limit as string) : 100;
-      const offset = req.query.offset ? parseInt(req.query.offset as string) : 0;
-      const nfts = await storage.getAllNFTs(limit, offset);
-      res.json(nfts);
-    } catch (err) {
-      res.status(500).json({ message: "Failed to fetch NFTs" });
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid auction ID" });
+      }
+
+      const auction = await storage.getAuction(id);
+      if (!auction) {
+        return res.status(404).json({ message: "Auction not found" });
+      }
+
+      res.json(auction);
+    } catch (error) {
+      res.status(500).json({ message: "Error fetching auction" });
     }
   });
 
-  // Get NFT by ID
-  app.get("/api/nfts/:id", async (req, res) => {
+  app.post("/api/auctions", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ message: "Authentication required" });
+    }
+
     try {
-      const nft = await storage.getNFT(parseInt(req.params.id));
+      const validatedData = insertAuctionSchema.parse(req.body);
+      
+      // Check if NFT exists and is owned by the user
+      const nft = await storage.getNft(validatedData.nftId);
       if (!nft) {
         return res.status(404).json({ message: "NFT not found" });
       }
-      res.json(nft);
-    } catch (err) {
-      res.status(500).json({ message: "Failed to fetch NFT" });
-    }
-  });
 
-  // Create NFT (authenticated)
-  app.post("/api/nfts", isAuthenticated, async (req, res) => {
-    try {
-      const user = req.user as Express.User;
-      const validatedData = insertNftSchema.parse({
-        ...req.body,
-        creatorId: user.id,
-        ownerId: user.id
-      });
-      const nft = await storage.createNFT(validatedData);
-      res.status(201).json(nft);
-    } catch (err) {
-      if (err instanceof z.ZodError) {
-        return res.status(400).json({ errors: err.errors });
+      if (nft.ownerId !== req.user!.id) {
+        return res.status(403).json({ message: "You don't have permission to auction this NFT" });
       }
-      res.status(500).json({ message: "Failed to create NFT" });
-    }
-  });
 
-  // Update NFT (owner only)
-  app.patch("/api/nfts/:id", isAuthenticated, async (req, res) => {
-    try {
-      const user = req.user as Express.User;
-      const nftId = parseInt(req.params.id);
-      const nft = await storage.getNFT(nftId);
-      
-      if (!nft) {
-        return res.status(404).json({ message: "NFT not found" });
+      // Update NFT status
+      await storage.updateNft(nft.id, { status: "auctioning" });
+
+      const auction = await storage.createAuction(validatedData);
+      res.status(201).json(auction);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid auction data", errors: error.errors });
       }
-      
-      if (nft.ownerId !== user.id) {
-        return res.status(403).json({ message: "You can only update your own NFTs" });
+      res.status(500).json({ message: "Error creating auction" });
+    }
+  });
+
+  // Bid routes
+  app.get("/api/auctions/:auctionId/bids", async (req, res) => {
+    try {
+      const auctionId = parseInt(req.params.auctionId);
+      if (isNaN(auctionId)) {
+        return res.status(400).json({ message: "Invalid auction ID" });
       }
-      
-      const updatedNft = await storage.updateNFT(nftId, req.body);
-      res.json(updatedNft);
-    } catch (err) {
-      res.status(500).json({ message: "Failed to update NFT" });
-    }
-  });
 
-  // Get NFTs by collection
-  app.get("/api/collections/:id/nfts", async (req, res) => {
-    try {
-      const nfts = await storage.getNFTsByCollection(parseInt(req.params.id));
-      res.json(nfts);
-    } catch (err) {
-      res.status(500).json({ message: "Failed to fetch NFTs" });
-    }
-  });
-
-  // Get NFTs by owner
-  app.get("/api/users/:id/owned", async (req, res) => {
-    try {
-      const nfts = await storage.getNFTsByOwner(parseInt(req.params.id));
-      res.json(nfts);
-    } catch (err) {
-      res.status(500).json({ message: "Failed to fetch NFTs" });
-    }
-  });
-
-  // Get NFTs by creator
-  app.get("/api/users/:id/created", async (req, res) => {
-    try {
-      const nfts = await storage.getNFTsByCreator(parseInt(req.params.id));
-      res.json(nfts);
-    } catch (err) {
-      res.status(500).json({ message: "Failed to fetch NFTs" });
-    }
-  });
-
-  // ===== Bid Routes =====
-  // Get bids for an NFT
-  app.get("/api/nfts/:id/bids", async (req, res) => {
-    try {
-      const bids = await storage.getBidsByNFT(parseInt(req.params.id));
+      const bids = await storage.getBidsByAuction(auctionId);
       res.json(bids);
-    } catch (err) {
-      res.status(500).json({ message: "Failed to fetch bids" });
+    } catch (error) {
+      res.status(500).json({ message: "Error fetching bids" });
     }
   });
 
-  // Create bid (authenticated)
-  app.post("/api/nfts/:id/bid", isAuthenticated, async (req, res) => {
+  app.post("/api/bids", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ message: "Authentication required" });
+    }
+
     try {
-      const user = req.user as Express.User;
-      const nftId = parseInt(req.params.id);
-      const nft = await storage.getNFT(nftId);
+      // Force the bidder to be the logged-in user
+      const bidData = { ...req.body, bidderId: req.user!.id };
+      const validatedData = insertBidSchema.parse(bidData);
       
-      if (!nft) {
-        return res.status(404).json({ message: "NFT not found" });
+      // Check if auction exists
+      const auction = await storage.getAuction(validatedData.auctionId);
+      if (!auction) {
+        return res.status(404).json({ message: "Auction not found" });
       }
-      
-      if (!nft.isAuction) {
-        return res.status(400).json({ message: "This NFT is not up for auction" });
+
+      // Check if the bid amount is higher than current price
+      if (validatedData.amount <= auction.currentPrice) {
+        return res.status(400).json({ message: "Bid amount must be higher than current price" });
       }
-      
-      if (nft.ownerId === user.id) {
-        return res.status(400).json({ message: "You cannot bid on your own NFT" });
-      }
-      
-      // Check if auction has ended
-      if (nft.auctionEndTime && new Date(nft.auctionEndTime) < new Date()) {
-        return res.status(400).json({ message: "This auction has ended" });
-      }
-      
-      // Get highest bid
-      const bids = await storage.getBidsByNFT(nftId);
-      const highestBid = bids.length > 0 ? bids[0].amount : 0;
-      
-      // Validate bid amount
-      if (req.body.amount <= highestBid) {
-        return res.status(400).json({ message: "Bid must be higher than current highest bid" });
-      }
-      
-      if (req.body.amount <= (nft.price || 0)) {
-        return res.status(400).json({ message: "Bid must be higher than starting price" });
-      }
-      
-      const validatedData = insertBidSchema.parse({
-        nftId,
-        bidderId: user.id,
-        amount: req.body.amount,
-        currency: req.body.currency || "ETH",
-        status: "active"
-      });
-      
+
+      // Update auction's current price
+      await storage.updateAuction(auction.id, { currentPrice: validatedData.amount });
+
       const bid = await storage.createBid(validatedData);
       res.status(201).json(bid);
-    } catch (err) {
-      if (err instanceof z.ZodError) {
-        return res.status(400).json({ errors: err.errors });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid bid data", errors: error.errors });
       }
-      res.status(500).json({ message: "Failed to create bid" });
+      res.status(500).json({ message: "Error creating bid" });
     }
   });
 
-  // ===== Transaction Routes =====
-  // Buy NFT directly (authenticated)
-  app.post("/api/nfts/:id/buy", isAuthenticated, async (req, res) => {
+  // Transaction routes
+  app.post("/api/transactions", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ message: "Authentication required" });
+    }
+
     try {
-      const user = req.user as Express.User;
-      const nftId = parseInt(req.params.id);
-      const nft = await storage.getNFT(nftId);
+      const validatedData = insertTransactionSchema.parse(req.body);
       
+      // Check if NFT exists
+      const nft = await storage.getNft(validatedData.nftId);
       if (!nft) {
         return res.status(404).json({ message: "NFT not found" });
       }
+
+      // Create transaction
+      const transaction = await storage.createTransaction(validatedData);
       
-      if (nft.isAuction) {
-        return res.status(400).json({ message: "This NFT is up for auction, not for direct sale" });
+      // Update NFT ownership and status
+      await storage.updateNft(nft.id, { 
+        ownerId: validatedData.buyerId,
+        status: "sold" 
+      });
+
+      res.status(201).json(transaction);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid transaction data", errors: error.errors });
       }
-      
+      res.status(500).json({ message: "Error creating transaction" });
+    }
+  });
+
+  // Buy NFT directly
+  app.post("/api/nfts/:id/buy", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ message: "Authentication required" });
+    }
+
+    try {
+      const nftId = parseInt(req.params.id);
+      if (isNaN(nftId)) {
+        return res.status(400).json({ message: "Invalid NFT ID" });
+      }
+
+      const nft = await storage.getNft(nftId);
+      if (!nft) {
+        return res.status(404).json({ message: "NFT not found" });
+      }
+
+      // Check if NFT is listed for sale
+      if (nft.status !== "listed") {
+        return res.status(400).json({ message: "NFT is not listed for sale" });
+      }
+
+      // Check if buyer has enough funds (simplified for now)
       if (!nft.price) {
-        return res.status(400).json({ message: "This NFT is not for sale" });
+        return res.status(400).json({ message: "NFT has no price" });
       }
-      
-      if (nft.ownerId === user.id) {
-        return res.status(400).json({ message: "You cannot buy your own NFT" });
-      }
-      
+
       // Create transaction
       const transaction = await storage.createTransaction({
-        nftId,
+        nftId: nft.id,
         sellerId: nft.ownerId,
-        buyerId: user.id,
+        buyerId: req.user!.id,
         price: nft.price,
-        currency: nft.currency || "ETH",
-        txHash: req.body.txHash || `tx-${Date.now()}-${Math.floor(Math.random() * 1000)}`
+        transactionType: "direct"
       });
       
+      // Update NFT ownership and status
+      await storage.updateNft(nft.id, { 
+        ownerId: req.user!.id,
+        status: "sold" 
+      });
+
       res.status(201).json(transaction);
-    } catch (err) {
-      res.status(500).json({ message: "Failed to purchase NFT" });
+    } catch (error) {
+      res.status(500).json({ message: "Error buying NFT" });
     }
   });
 
-  // Get user transactions
-  app.get("/api/users/:id/transactions", async (req, res) => {
-    try {
-      const transactions = await storage.getTransactionsByUser(parseInt(req.params.id));
-      res.json(transactions);
-    } catch (err) {
-      res.status(500).json({ message: "Failed to fetch transactions" });
+  // List NFT for sale
+  app.post("/api/nfts/:id/list", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ message: "Authentication required" });
     }
-  });
 
-  // ===== Follow Routes =====
-  // Follow a user (authenticated)
-  app.post("/api/users/:id/follow", isAuthenticated, async (req, res) => {
     try {
-      const user = req.user as Express.User;
-      const followedId = parseInt(req.params.id);
-      
-      if (user.id === followedId) {
-        return res.status(400).json({ message: "You cannot follow yourself" });
+      const nftId = parseInt(req.params.id);
+      if (isNaN(nftId)) {
+        return res.status(400).json({ message: "Invalid NFT ID" });
       }
-      
-      const targetUser = await storage.getUser(followedId);
-      if (!targetUser) {
+
+      const nft = await storage.getNft(nftId);
+      if (!nft) {
+        return res.status(404).json({ message: "NFT not found" });
+      }
+
+      // Check if user owns the NFT
+      if (nft.ownerId !== req.user!.id) {
+        return res.status(403).json({ message: "You don't have permission to list this NFT" });
+      }
+
+      // Validate price
+      const price = parseFloat(req.body.price);
+      if (isNaN(price) || price <= 0) {
+        return res.status(400).json({ message: "Invalid price" });
+      }
+
+      // Update NFT status and price
+      const updatedNft = await storage.updateNft(nft.id, { 
+        status: "listed",
+        price: price
+      });
+
+      res.json(updatedNft);
+    } catch (error) {
+      res.status(500).json({ message: "Error listing NFT" });
+    }
+  });
+
+  // Follow routes
+  app.post("/api/users/:id/follow", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ message: "Authentication required" });
+    }
+
+    try {
+      const followingId = parseInt(req.params.id);
+      if (isNaN(followingId)) {
+        return res.status(400).json({ message: "Invalid user ID" });
+      }
+
+      // Check if user exists
+      const followingUser = await storage.getUser(followingId);
+      if (!followingUser) {
         return res.status(404).json({ message: "User not found" });
       }
-      
-      const follow = await storage.createFollow({
-        followerId: user.id,
-        followedId
-      });
-      
-      res.status(201).json(follow);
-    } catch (err) {
-      res.status(500).json({ message: "Failed to follow user" });
-    }
-  });
 
-  // Unfollow a user (authenticated)
-  app.delete("/api/users/:id/follow", isAuthenticated, async (req, res) => {
-    try {
-      const user = req.user as Express.User;
-      const followedId = parseInt(req.params.id);
-      
-      const result = await storage.deleteFollow(user.id, followedId);
-      if (!result) {
-        return res.status(404).json({ message: "Not following this user" });
+      // Check if trying to follow self
+      if (followingId === req.user!.id) {
+        return res.status(400).json({ message: "Cannot follow yourself" });
       }
-      
-      res.status(200).json({ success: true });
-    } catch (err) {
-      res.status(500).json({ message: "Failed to unfollow user" });
+
+      const follow = await storage.createFollow({
+        followerId: req.user!.id,
+        followingId
+      });
+
+      res.status(201).json(follow);
+    } catch (error) {
+      res.status(500).json({ message: "Error following user" });
     }
   });
 
-  // Check if following
-  app.get("/api/users/:id/following", isAuthenticated, async (req, res) => {
+  app.delete("/api/users/:id/follow", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ message: "Authentication required" });
+    }
+
     try {
-      const user = req.user as Express.User;
-      const followedId = parseInt(req.params.id);
+      const followingId = parseInt(req.params.id);
+      if (isNaN(followingId)) {
+        return res.status(400).json({ message: "Invalid user ID" });
+      }
+
+      const success = await storage.deleteFollow(req.user!.id, followingId);
       
-      const isFollowing = await storage.isFollowing(user.id, followedId);
-      res.json({ following: isFollowing });
-    } catch (err) {
-      res.status(500).json({ message: "Failed to check following status" });
+      if (success) {
+        res.status(200).json({ message: "Successfully unfollowed" });
+      } else {
+        res.status(404).json({ message: "Follow relationship not found" });
+      }
+    } catch (error) {
+      res.status(500).json({ message: "Error unfollowing user" });
     }
   });
 
   // Get followers
   app.get("/api/users/:id/followers", async (req, res) => {
     try {
-      const followers = await storage.getFollowers(parseInt(req.params.id));
-      res.json(followers);
-    } catch (err) {
-      res.status(500).json({ message: "Failed to fetch followers" });
+      const userId = parseInt(req.params.id);
+      if (isNaN(userId)) {
+        return res.status(400).json({ message: "Invalid user ID" });
+      }
+
+      const follows = await storage.getFollowersByUser(userId);
+      
+      // Get all follower users
+      const followerPromises = follows.map(follow => storage.getUser(follow.followerId));
+      const followers = await Promise.all(followerPromises);
+      
+      // Remove passwords
+      const cleanFollowers = followers.filter(Boolean).map(follower => {
+        if (!follower) return null;
+        const { password, ...userWithoutPassword } = follower;
+        return userWithoutPassword;
+      });
+
+      res.json(cleanFollowers);
+    } catch (error) {
+      res.status(500).json({ message: "Error fetching followers" });
     }
   });
 
   // Get following
-  app.get("/api/users/:id/followings", async (req, res) => {
+  app.get("/api/users/:id/following", async (req, res) => {
     try {
-      const following = await storage.getFollowing(parseInt(req.params.id));
-      res.json(following);
-    } catch (err) {
-      res.status(500).json({ message: "Failed to fetch following users" });
+      const userId = parseInt(req.params.id);
+      if (isNaN(userId)) {
+        return res.status(400).json({ message: "Invalid user ID" });
+      }
+
+      const follows = await storage.getFollowingByUser(userId);
+      
+      // Get all following users
+      const followingPromises = follows.map(follow => storage.getUser(follow.followingId));
+      const following = await Promise.all(followingPromises);
+      
+      // Remove passwords
+      const cleanFollowing = following.filter(Boolean).map(user => {
+        if (!user) return null;
+        const { password, ...userWithoutPassword } = user;
+        return userWithoutPassword;
+      });
+
+      res.json(cleanFollowing);
+    } catch (error) {
+      res.status(500).json({ message: "Error fetching following" });
     }
   });
 
-  // ===== Comment Routes =====
-  // Get comments for an NFT
+  // Comment routes
   app.get("/api/nfts/:id/comments", async (req, res) => {
     try {
-      const comments = await storage.getCommentsByNFT(parseInt(req.params.id));
+      const nftId = parseInt(req.params.id);
+      if (isNaN(nftId)) {
+        return res.status(400).json({ message: "Invalid NFT ID" });
+      }
+
+      const comments = await storage.getCommentsByNft(nftId);
       res.json(comments);
-    } catch (err) {
-      res.status(500).json({ message: "Failed to fetch comments" });
+    } catch (error) {
+      res.status(500).json({ message: "Error fetching comments" });
     }
   });
 
-  // Add comment (authenticated)
-  app.post("/api/nfts/:id/comments", isAuthenticated, async (req, res) => {
+  app.post("/api/comments", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ message: "Authentication required" });
+    }
+
     try {
-      const user = req.user as Express.User;
-      const nftId = parseInt(req.params.id);
+      // Force the user ID to be the logged-in user
+      const commentData = { ...req.body, userId: req.user!.id };
+      const validatedData = insertCommentSchema.parse(commentData);
       
-      const nft = await storage.getNFT(nftId);
+      // Check if NFT exists
+      const nft = await storage.getNft(validatedData.nftId);
       if (!nft) {
         return res.status(404).json({ message: "NFT not found" });
       }
-      
-      const validatedData = insertCommentSchema.parse({
-        nftId,
-        userId: user.id,
-        content: req.body.content
-      });
-      
+
       const comment = await storage.createComment(validatedData);
       res.status(201).json(comment);
-    } catch (err) {
-      if (err instanceof z.ZodError) {
-        return res.status(400).json({ errors: err.errors });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid comment data", errors: error.errors });
       }
-      res.status(500).json({ message: "Failed to add comment" });
+      res.status(500).json({ message: "Error creating comment" });
     }
   });
 
-  // ===== Like Routes =====
-  // Like an NFT (authenticated)
-  app.post("/api/nfts/:id/like", isAuthenticated, async (req, res) => {
+  // User profile routes
+  app.get("/api/users/:id", async (req, res) => {
     try {
-      const user = req.user as Express.User;
-      const nftId = parseInt(req.params.id);
-      
-      const nft = await storage.getNFT(nftId);
-      if (!nft) {
-        return res.status(404).json({ message: "NFT not found" });
+      const userId = parseInt(req.params.id);
+      if (isNaN(userId)) {
+        return res.status(400).json({ message: "Invalid user ID" });
       }
-      
-      const like = await storage.createLike({
-        nftId,
-        userId: user.id
-      });
-      
-      res.status(201).json(like);
-    } catch (err) {
-      res.status(500).json({ message: "Failed to like NFT" });
-    }
-  });
 
-  // Unlike an NFT (authenticated)
-  app.delete("/api/nfts/:id/like", isAuthenticated, async (req, res) => {
-    try {
-      const user = req.user as Express.User;
-      const nftId = parseInt(req.params.id);
-      
-      const result = await storage.deleteLike(user.id, nftId);
-      if (!result) {
-        return res.status(404).json({ message: "Not liked" });
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
       }
-      
-      res.status(200).json({ success: true });
-    } catch (err) {
-      res.status(500).json({ message: "Failed to unlike NFT" });
+
+      // Remove password from response
+      const { password, ...userWithoutPassword } = user;
+      res.json(userWithoutPassword);
+    } catch (error) {
+      res.status(500).json({ message: "Error fetching user" });
     }
   });
 
-  // Check if liked
-  app.get("/api/nfts/:id/liked", isAuthenticated, async (req, res) => {
+  app.get("/api/users/:id/nfts", async (req, res) => {
     try {
-      const user = req.user as Express.User;
-      const nftId = parseInt(req.params.id);
-      
-      const isLiked = await storage.isLiked(user.id, nftId);
-      res.json({ liked: isLiked });
-    } catch (err) {
-      res.status(500).json({ message: "Failed to check like status" });
+      const userId = parseInt(req.params.id);
+      if (isNaN(userId)) {
+        return res.status(400).json({ message: "Invalid user ID" });
+      }
+
+      const nfts = await storage.getNftsByOwner(userId);
+      res.json(nfts);
+    } catch (error) {
+      res.status(500).json({ message: "Error fetching user's NFTs" });
     }
   });
 
-  // Get likes count
-  app.get("/api/nfts/:id/likes", async (req, res) => {
+  app.get("/api/users/:id/created", async (req, res) => {
     try {
-      const likes = await storage.getLikesByNFT(parseInt(req.params.id));
-      res.json({ count: likes.length, likes });
-    } catch (err) {
-      res.status(500).json({ message: "Failed to fetch likes" });
+      const userId = parseInt(req.params.id);
+      if (isNaN(userId)) {
+        return res.status(400).json({ message: "Invalid user ID" });
+      }
+
+      const nfts = await storage.getNftsByCreator(userId);
+      res.json(nfts);
+    } catch (error) {
+      res.status(500).json({ message: "Error fetching user's created NFTs" });
     }
   });
 
-  // Create HTTP server
+  app.get("/api/users/:id/collections", async (req, res) => {
+    try {
+      const userId = parseInt(req.params.id);
+      if (isNaN(userId)) {
+        return res.status(400).json({ message: "Invalid user ID" });
+      }
+
+      const collections = await storage.getCollectionsByCreator(userId);
+      res.json(collections);
+    } catch (error) {
+      res.status(500).json({ message: "Error fetching user's collections" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
