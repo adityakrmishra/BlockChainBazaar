@@ -47,10 +47,10 @@ export default function Header() {
         </div>
         
         {/* Search Bar - Desktop */}
-        <div className="relative hidden md:block w-1/3">
+        <div className="relative hidden md:block w-1/4">
           <Input 
             type="text" 
-            placeholder="Search items, collections, and accounts" 
+            placeholder="Search items, collections..." 
             className="w-full py-2 px-4 rounded-lg bg-accent dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-secondary transition-all" 
           />
           <span className="absolute right-3 top-2.5 text-gray-500 dark:text-gray-400">
@@ -59,7 +59,7 @@ export default function Header() {
         </div>
         
         {/* Navigation - Desktop */}
-        <nav className="hidden md:flex items-center space-x-6">
+        <nav className="hidden md:flex items-center space-x-5">
           <Link href="/">
             <a className={`font-medium hover:text-secondary transition-colors ${location === '/' ? 'text-secondary' : ''}`}>
               Home
@@ -73,6 +73,11 @@ export default function Header() {
           <Link href="/create">
             <a className={`font-medium hover:text-secondary transition-colors ${location === '/create' ? 'text-secondary' : ''}`}>
               Create
+            </a>
+          </Link>
+          <Link href="/developer">
+            <a className={`font-medium hover:text-secondary transition-colors ${location === '/developer' ? 'text-secondary' : ''}`}>
+              Developer
             </a>
           </Link>
         </nav>
@@ -165,6 +170,11 @@ export default function Header() {
             <Link href="/create">
               <a className={`font-medium hover:text-secondary transition-colors ${location === '/create' ? 'text-secondary' : ''}`} onClick={toggleMenu}>
                 Create
+              </a>
+            </Link>
+            <Link href="/developer">
+              <a className={`font-medium hover:text-secondary transition-colors ${location === '/developer' ? 'text-secondary' : ''}`} onClick={toggleMenu}>
+                Developer
               </a>
             </Link>
             

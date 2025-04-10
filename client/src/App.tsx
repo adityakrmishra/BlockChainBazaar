@@ -8,6 +8,7 @@ import MarketplacePage from "@/pages/marketplace-page";
 import NftDetailsPage from "@/pages/nft-details-page";
 import ProfilePage from "@/pages/profile-page";
 import CreateNftPage from "@/pages/create-nft-page";
+import DeveloperPage from "@/pages/developer-page";
 import Header from "@/components/layout/header";
 import Footer from "@/components/layout/footer";
 import { AuthProvider } from "./hooks/use-auth";
@@ -21,6 +22,7 @@ function Router() {
       <Route path="/nft/:id" component={NftDetailsPage} />
       <Route path="/profile/:id" component={ProfilePage} />
       <ProtectedRoute path="/create" component={CreateNftPage} />
+      <Route path="/developer" component={DeveloperPage} />
       <Route component={NotFound} />
     </Switch>
   );
